@@ -68,8 +68,8 @@ var (
 const DefaultTimeout = 100 * time.Millisecond
 
 const (
-	buffered            = 8 // arbitrary buffered channel size, for readability
-	maxIdleConnsPerAddr = 2 // TODO(bradfitz): make this configurable?
+	buffered                   = 8 // arbitrary buffered channel size, for readability
+	defaultMaxIdleConnsPerAddr = 2
 )
 
 // resumableError returns true if err is only a protocol-level cache error.
@@ -123,7 +123,10 @@ func New(server ...string) *Client {
 
 // NewFromSelector returns a new Client using the provided ServerSelector.
 func NewFromSelector(ss ServerSelector) *Client {
-	return &Client{selector: ss}
+	return &Client{
+		selector:            ss,
+		maxIdleConnsPerAddr: defaultMaxIdleConnsPerAddr,
+	}
 }
 
 // Client is a memcache client.
@@ -137,6 +140,8 @@ type Client struct {
 
 	lk       sync.Mutex
 	freeconn map[string][]*conn
+
+	maxIdleConnsPerAddr int
 }
 
 // Item is an item to be got or stored in a memcached server.
@@ -199,7 +204,7 @@ func (c *Client) putFreeConn(addr net.Addr, cn *conn) {
 		c.freeconn = make(map[string][]*conn)
 	}
 	freelist := c.freeconn[addr.String()]
-	if len(freelist) >= maxIdleConnsPerAddr {
+	if len(freelist) >= c.maxIdleConnsPerAddr {
 		cn.nc.Close()
 		return
 	}
@@ -275,6 +280,13 @@ func (c *Client) getConn(addr net.Addr) (*conn, error) {
 	}
 	cn.extendDeadline()
 	return cn, nil
+}
+
+func (c *Client) SetMaxIdleConnsPerAddr(n int) {
+	c.lk.Lock()
+	c.maxIdleConnsPerAddr = n
+	c.lk.Unlock()
+
 }
 
 func (c *Client) onItem(item *Item, fn func(*Client, *bufio.ReadWriter, *Item) error) error {
