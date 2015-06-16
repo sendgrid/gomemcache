@@ -283,7 +283,10 @@ func (c *Client) getConn(addr net.Addr) (*conn, error) {
 }
 
 func (c *Client) SetMaxIdleConnsPerAddr(n int) {
+	c.lk.Lock()
 	c.maxIdleConnsPerAddr = n
+	c.lk.Unlock()
+
 }
 
 func (c *Client) onItem(item *Item, fn func(*Client, *bufio.ReadWriter, *Item) error) error {
