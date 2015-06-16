@@ -3,6 +3,10 @@
 This is a memcache client library for the Go programming language
 (http://golang.org/).
 
+### Differences from the upstream (bradfitz) repo
+
+- Added a `SetMaxIdleConnsPerAddr` method
+
 ## Installing
 
 ### Using *go get*
